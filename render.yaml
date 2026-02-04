@@ -1,9 +1,12 @@
 services:
   - type: web
     name: joey-ai-frontend-v2
-    env: static
+    runtime: node
+    plan: free
     buildCommand: npm install && npm run build
-    staticPublishPath: .next
+    startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: http://localhost:8000
+      - key: NODE_ENV
+        value: production
