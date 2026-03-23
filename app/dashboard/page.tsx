@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { apiClient } from "@/lib/api";
 import { Project, ProjectStatus } from "@/types";
@@ -9,6 +9,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     loadProjects();
@@ -25,6 +27,17 @@ export default function DashboardPage() {
       setLoading(false);
     }
   };
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      const matchSearch =
+        !searchQuery ||
+        p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchStatus =
+        statusFilter === "all" || p.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [projects, searchQuery, statusFilter]);
 
   const getStatusBadge = (status: ProjectStatus) => {
     const badges = {
@@ -45,7 +58,7 @@ export default function DashboardPage() {
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-sm font-medium ${badges[status]}`}
+        className={}
       >
         {labels[status]}
       </span>
@@ -127,7 +140,64 @@ export default function DashboardPage() {
         {/* 專案列表 */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">所有專案</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">所有專案</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {filteredProjects.length === projects.length
+                    ? `共 ${projects.length} 個專案`
+                    : `顯示 ${filteredProjects.length} / ${projects.length} 個專案`}
+                </p>
+              </div>
+            </div>
+
+            {/* 搜尋和篩選 */}
+            <div className="flex flex-col sm:flex-row gap-3 mt-4">
+              <div className="relative flex-1">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="搜尋專案名稱…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent sm:w-40"
+              >
+                <option value="all">所有狀態</option>
+                <option value="pending">等待中</option>
+                <option value="running">執行中</option>
+                <option value="completed">已完成</option>
+                <option value="failed">失敗</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </div>
           </div>
 
           {loading && (
@@ -151,9 +221,25 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {!loading && !error && projects.length > 0 && (
+          {!loading && !error && projects.length > 0 && filteredProjects.length === 0 && (
+            <div className="p-12 text-center">
+              <div className="text-4xl mb-4">🔍</div>
+              <p className="text-gray-600 mb-4">沒有符合條件的專案</p>
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                }}
+                className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-sm font-medium"
+              >
+                清除篩選
+              </button>
+            </div>
+          )}
+
+          {!loading && !error && filteredProjects.length > 0 && (
             <div className="divide-y divide-gray-200">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <Link
                   key={project.id}
                   href={`/projects/${project.id}`}
